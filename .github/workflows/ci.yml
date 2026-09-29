@@ -81,13 +81,13 @@ jobs:
           context: .
           push: false
           load: true
-          tags: telegram-bot:ci
+          tags: boilerplate-node:ci
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
       - name: Run container and check health endpoint
         run: |
-          docker run -d --name telegram-bot-ci -p 3000:3000 telegram-bot:ci
+          docker run -d --name boilerplate-node-ci -p 3000:3000 boilerplate-node:ci
           for i in $(seq 1 20); do
             if curl --fail --silent http://127.0.0.1:3000/health; then
               echo "\ncontainer is healthy"
@@ -96,5 +96,5 @@ jobs:
             sleep 1
           done
           echo "container did not become healthy"
-          docker logs telegram-bot-ci
+          docker logs boilerplate-node-ci
           exit 1

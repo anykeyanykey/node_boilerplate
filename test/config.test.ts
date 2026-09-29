@@ -7,7 +7,7 @@ describe('loadConfig', () => {
 
     expect(config.NODE_ENV).toBe('development');
     expect(config.LOG_LEVEL).toBe('info');
-    expect(config.SERVICE_NAME).toBe('telegram-bot');
+    expect(config.SERVICE_NAME).toBe('boilerplate-node');
     expect(config.PORT).toBe(3000);
     expect(config.HOST).toBe('0.0.0.0');
     expect(config.SHUTDOWN_TIMEOUT_MS).toBe(10_000);
@@ -48,11 +48,11 @@ describe('loadConfig', () => {
     expect(() => loadConfig({ NODE_ENV: 'staging' })).toThrow(/NODE_ENV/);
   });
 
-  it('rejects an empty TELEGRAM_BOT_TOKEN', () => {
-    expect(() => loadConfig({ TELEGRAM_BOT_TOKEN: '' })).toThrow(/TELEGRAM_BOT_TOKEN/);
+  it('rejects an empty API_TOKEN', () => {
+    expect(() => loadConfig({ API_TOKEN: '' })).toThrow(/API_TOKEN/);
   });
 
-  it('keeps a valid TELEGRAM_BOT_TOKEN', () => {
-    expect(loadConfig({ TELEGRAM_BOT_TOKEN: '123:abc' }).TELEGRAM_BOT_TOKEN).toBe('123:abc');
+  it('keeps a valid API_TOKEN', () => {
+    expect(loadConfig({ API_TOKEN: 'secret-value' }).API_TOKEN).toBe('secret-value');
   });
 });

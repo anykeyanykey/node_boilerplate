@@ -1,4 +1,4 @@
-# telegram-bot
+# boilerplate-node
 
 Node.js + TypeScript boilerplate: strict-типизация, линтер, тесты, Docker и CI.
 
@@ -48,15 +48,15 @@ npm run dev
 Все переменные окружения валидируются Zod в `src/config.ts` — при ошибке процесс падает
 на старте с понятным сообщением, а не в рантайме.
 
-| Переменная            | Тип                                     | По умолчанию   |
-| --------------------- | --------------------------------------- | -------------- |
-| `NODE_ENV`            | `development` \| `test` \| `production` | `development`  |
-| `LOG_LEVEL`           | `trace`…`fatal`                         | `info`         |
-| `SERVICE_NAME`        | string                                  | `telegram-bot` |
-| `HOST`                | string                                  | `0.0.0.0`      |
-| `PORT`                | 1–65535                                 | `3000`         |
-| `SHUTDOWN_TIMEOUT_MS` | положительное целое                     | `10000`        |
-| `TELEGRAM_BOT_TOKEN`  | string (опционально)                    | —              |
+| Переменная            | Тип                                     | По умолчанию       |
+| --------------------- | --------------------------------------- | ------------------ |
+| `NODE_ENV`            | `development` \| `test` \| `production` | `development`      |
+| `LOG_LEVEL`           | `trace`…`fatal`                         | `info`             |
+| `SERVICE_NAME`        | string                                  | `boilerplate-node` |
+| `HOST`                | string                                  | `0.0.0.0`          |
+| `PORT`                | 1–65535                                 | `3000`             |
+| `SHUTDOWN_TIMEOUT_MS` | положительное целое                     | `10000`            |
+| `API_TOKEN`           | string (опционально)                    | —                  |
 
 Пример — `.env.example`. Файл `.env` в git не попадает.
 

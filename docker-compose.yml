@@ -3,8 +3,8 @@ services:
     build:
       context: .
       target: runtime
-    image: telegram-bot:local
-    container_name: telegram-bot
+    image: boilerplate-node:local
+    container_name: boilerplate-node
     restart: unless-stopped
     env_file:
       - path: .env

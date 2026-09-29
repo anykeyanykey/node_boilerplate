@@ -8,7 +8,7 @@ export function createLogger(config: Config): Logger {
     level: config.LOG_LEVEL,
     base: { env: config.NODE_ENV },
     redact: {
-      paths: ['*.token', '*.password', '*.secret', 'TELEGRAM_BOT_TOKEN'],
+      paths: ['*.token', '*.password', '*.secret', 'API_TOKEN'],
       censor: '[redacted]',
     },
     ...(config.NODE_ENV === 'development'
