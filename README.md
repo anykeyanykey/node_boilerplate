@@ -43,6 +43,52 @@ npm run dev
 | `npm run docker:build`  | Сборка образа                          |
 | `npm run docker:run`    | Запуск контейнера с `.env`             |
 
+## Запуск через PM2
+
+Процесс живёт под PM2 в двух режимах: на хосте (VPS) и внутри Docker-контейнера —
+конфиг один и тот же, `ecosystem.config.cjs`.
+
+```bash
+npm run build        # PM2 запускает dist/index.js, сначала нужен build
+
+npm run pm2:start    # старт в production-режиме
+npm run pm2:dev      # старт с NODE_ENV=development и pretty-логами
+npm run pm2:status   # таблица процессов
+npm run pm2:logs     # живой просмотр логов
+npm run pm2:monit    # графики CPU/RAM
+npm run pm2:restart  # рестарт с обновлением env (--update-env)
+npm run pm2:reload   # zero-downtime reload
+npm run pm2:stop     |  npm run pm2:delete  |  npm run pm2:kill
+npm run pm2:flush    # очистить логи
+```
+
+Логи пишутся в `logs/out.log` и `logs/error.log` (папка в `.gitignore`).
+Директория создаётся PM2 автоматически.
+
+Ключевые настройки процесса:
+
+| Параметр             | Значение               | Зачем                                                |
+| -------------------- | ---------------------- | ---------------------------------------------------- |
+| `instances`          | `1`, `exec_mode: fork` | без кластера — предсказуемый shutdown                |
+| `autorestart`        | `true`                 | перезапуск при падении                               |
+| `max_restarts`       | `10`                   | защита от бесконечного цикла падений                 |
+| `min_uptime`         | `20s`                  | падение быстрее 20s не считается рестартом           |
+| `restart_delay`      | `2000`                 | пауза перед рестартом                                |
+| `max_memory_restart` | `300M`                 | перезапуск при утечке памяти                         |
+| `kill_timeout`       | `15000`                | > `SHUTDOWN_TIMEOUT_MS`, чтобы успеть закрыть сервер |
+
+> `kill_timeout` намеренно больше `SHUTDOWN_TIMEOUT_MS` из `src/config.ts`: иначе PM2
+> пришлёт `SIGKILL` раньше, чем приложение успеет завершить запросы. Связь между
+> этими значениями проверяется тестом `test/pm2.test.ts`.
+
+### Внутри Docker
+
+Контейнер запускает `pm2-runtime` — демон не поднимается, а процесс живёт в foreground
+и корректно получает `SIGTERM` от Docker. Логи перенаправляются в stdout/stderr
+(переменная `LOG_TO_STDOUT=true`), поэтому `docker logs` и сборщики логов работают
+как обычно, несмотря на PM2. Перезапуски при падении делает сам PM2, а не
+`restart: unless-stopped` в compose.
+
 ## Конфигурация
 
 Все переменные окружения валидируются Zod в `src/config.ts` — при ошибке процесс падает
@@ -69,6 +115,7 @@ src/
   logger.ts   фабрика Pino с redact секретов
   server.ts   HTTP-сервер и /health
 test/         юнит- и интеграционные тесты
+ecosystem.config.cjs   конфиг PM2 (общий для хоста и контейнера)
 ```
 
 ## Docker
@@ -83,17 +130,24 @@ docker compose up --build
 Образ multi-stage: стадии `deps` → `build` → `prod-deps` → `runtime`.
 В рантайме только production-зависимости, непривилегированный пользователь
 (`uid 10001`), `tini` как PID 1, встроенный `HEALTHCHECK` и ротация логов в compose.
+Точкой входа служит `pm2-runtime` (см. раздел про PM2).
 
 ## CI
 
-`.github/workflows/ci.yml` — три джобы на каждый push и PR в `main`:
+`.github/workflows/ci.yml` — четыре джобы на каждый push и PR в `main`:
 
 1. **verify** — format check, lint, typecheck, тесты с coverage-порогами;
-2. **build** — сборка и smoke-тест `node dist/index.js` через `/health`;
-3. **docker** — сборка образа с GHA cache и проверка health-check в контейнере.
+2. **build** — сборка, smoke-тест `node dist/index.js` через `/health` и проверка
+   graceful shutdown по `SIGTERM`;
+3. **pm2** — реальный старт под PM2, рестарт с новым pid, проверка записи в `logs/`;
+4. **docker** — сборка образа с GHA cache и проверка health-check в контейнере.
 
+Джобы 2–4 зависят от `verify`, поэтому сломанный линт не тратит время на сборку образа.
 `concurrency` отменяет предыдущий прогон для того же ref, есть `timeout-minutes`
 на каждой джобе. Dependabot обновляет npm-зависимости и Actions раз в неделю.
+
+> Проверка graceful shutdown живёт именно в CI: на Windows `Stop-Process` и PM2
+> не умеют доставлять `SIGINT`/`SIGTERM` приложению, там возможен только жёсткий kill.
 
 ## Строгий TypeScript
 

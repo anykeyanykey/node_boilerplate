@@ -44,7 +44,7 @@ export default tseslint.config(
     },
   },
   {
-    files: ['eslint.config.mjs'],
+    files: ['eslint.config.mjs', 'ecosystem.config.cjs'],
     ...tseslint.configs.disableTypeChecked,
   },
   prettier,

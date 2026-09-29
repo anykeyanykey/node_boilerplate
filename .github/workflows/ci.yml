@@ -61,9 +61,84 @@ jobs:
       - run: npm ci
       - run: npm run build
       - name: Smoke test the compiled output
-        run: node dist/index.js &
+        run: |
+          node dist/index.js &
+          APP_PID=$!
           sleep 2
           curl --fail --silent --show-error http://127.0.0.1:3000/health
+          echo
+      - name: Verify graceful shutdown on SIGTERM
+        run: |
+          pkill -TERM -f "node dist/index.js" || true
+          for _ in $(seq 1 15); do
+            if ! kill -0 "$(pgrep -f 'node dist/index.js' | head -1)" 2>/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          if pgrep -f "node dist/index.js" > /dev/null; then
+            echo "process did not exit on SIGTERM"
+            exit 1
+          fi
+          echo "process exited on SIGTERM"
+
+  pm2:
+    name: PM2
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: verify
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - run: npm ci
+      - run: npm run build
+
+      - name: Start under PM2 and check the process is healthy
+        run: |
+          npx pm2 start ecosystem.config.cjs
+          sleep 3
+          npx pm2 jlist | node -e "
+            let raw='';
+            process.stdin.on('data',c=>raw+=c).on('end',()=>{
+              const [app]=JSON.parse(raw);
+              if(!app||app.pm2_env.status!=='online'){
+                console.error('expected an online process, got', app && app.pm2_env.status);
+                process.exit(1);
+              }
+              console.log('pm2 process is', app.pm2_env.status, 'with pid', app.pid);
+            });
+          "
+          curl --fail --silent --show-error http://127.0.0.1:3000/health
+          echo
+
+      - name: Restart under PM2
+        run: |
+          PID_BEFORE=$(npx pm2 pid boilerplate-node)
+          npx pm2 restart ecosystem.config.cjs --update-env
+          sleep 3
+          PID_AFTER=$(npx pm2 pid boilerplate-node)
+          echo "pid before=$PID_BEFORE after=$PID_AFTER"
+          if [ "$PID_BEFORE" = "$PID_AFTER" ]; then
+            echo "restart did not replace the process"
+            exit 1
+          fi
+          curl --fail --silent --show-error http://127.0.0.1:3000/health
+          echo
+
+      - name: Logs land in the log files
+        run: |
+          test -f logs/out.log
+          grep -q "Service started" logs/out.log
+          echo "logs/out.log is being written"
+
+      - name: Stop PM2 daemon
+        if: always()
+        run: npx pm2 kill
 
   docker:
     name: Docker image
