@@ -116,6 +116,8 @@ src/
   server.ts   HTTP-сервер и /health
 test/         юнит- и интеграционные тесты
 ecosystem.config.cjs   конфиг PM2 (общий для хоста и контейнера)
+AGENTS.md             инструкции для агентов (единый источник правды)
+CONTRIBUTING.md       те же правила для людей
 ```
 
 ## Docker
@@ -148,6 +150,52 @@ docker compose up --build
 
 > Проверка graceful shutdown живёт именно в CI: на Windows `Stop-Process` и PM2
 > не умеют доставлять `SIGINT`/`SIGTERM` приложению, там возможен только жёсткий kill.
+
+Плюс джоба **commitlint** проверяет conventional-коммиты во всём диапазоне PR.
+
+## Работа с ИИ-агентами
+
+| Файл                              | Кто читает                                                           |
+| --------------------------------- | -------------------------------------------------------------------- |
+| `AGENTS.md`                       | общий стандарт: Cursor, Codex, Claude Code, Copilot, Windsurf, Aider |
+| `.cursor/rules/project.mdc`       | Cursor                                                               |
+| `.github/copilot-instructions.md` | GitHub Copilot                                                       |
+| `CLAUDE.md`                       | Claude Code                                                          |
+| `.mcp.json`                       | MCP-серверы: filesystem, github, context7                            |
+
+`AGENTS.md` — единственный источник правды. Остальные файлы только ссылаются на него,
+чтобы правила не расходились между инструментами. Внутри — команды, таблица строгих
+флагов TypeScript с объяснением, почему их нельзя отключать ради починки сборки,
+и инварианты (например, связь `kill_timeout` и `SHUTDOWN_TIMEOUT_MS`).
+
+`CONTRIBUTING.md` с теми же правилами для людей — см. раздел «Правила» ниже.
+
+## Правила для контрибьюторов
+
+### Pre-commit хуки
+
+Husky запускает на staged-файлах:
+
+1. `lint-staged` → prettier + `eslint --fix` (с кэшем);
+2. `tsc --noEmit` по всему проекту;
+3. `commitlint` — conventional commits.
+
+Цикл обратной связи — секунды вместо ~3 минут ожидания CI. Хуки включаются через
+`npm install` (скрипт `prepare`), отдельная настройка не нужна.
+
+```bash
+echo "feat: your message" | npm run commit:lint   # проверить сообщение локально
+```
+
+Обойти хук (`--no-verify`) — плохая идея: причина, по которой он сработал, никуда не
+денется и всплывёт в CI.
+
+### Dependabot
+
+Рутинные minor/patch-обновления npm собираются в один PR вместо десятка. Majors идут
+отдельными PR на ревью. Обновление TypeScript до 7.x заблокировано в конфиге: до
+выхода `typescript-eslint@9` (peer-диапазон `<6.1.0`) линтер просто не запустится.
+Строку `ignore` в `.github/dependabot.yml` нужно удалить после выхода v9.
 
 ## Строгий TypeScript
 

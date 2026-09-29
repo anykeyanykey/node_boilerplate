@@ -45,6 +45,19 @@ jobs:
       - name: Test with coverage
         run: npm run test:coverage
 
+  commitlint:
+    name: Commit messages
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - uses: wagoid/commitlint-github-action@v6
+        with:
+          configFile: commitlint.config.mjs
+
   build:
     name: Build
     runs-on: ubuntu-latest
